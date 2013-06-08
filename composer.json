@@ -1,5 +1,6 @@
 {
-	"name": "dcp-router",
+	"name": "dcp/router",
+	"description": "Provides a minimalistic MVC-style router.",
 	"license": "MIT",
 	"authors": [
 		{
