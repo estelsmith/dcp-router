@@ -12,6 +12,7 @@
 	"autoload": {
 		"psr-0": {"DCP\\Router\\": "src/"}
 	},
+	"target-dir": "DCP/Router",
 	"keywords": [
 		"mvc",
 		"routing"
