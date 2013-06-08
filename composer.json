@@ -1,14 +1,17 @@
 {
 	"name": "dcp/router",
+	"type": "library",
 	"description": "Provides a minimalistic MVC-style router.",
 	"license": "MIT",
 	"authors": [
 		{
 			"name": "Estel Smith",
-			"email": "estel.smith@gmail.com",
-			"role": "Project Owner"
+			"email": "estel.smith@gmail.com"
 		}
 	],
+	"autoload": {
+		"psr-0": {"DCP\\Router\\": "src/"}
+	},
 	"keywords": [
 		"mvc",
 		"routing"
