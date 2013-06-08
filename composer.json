@@ -1,0 +1,15 @@
+{
+	"name": "dcp-router",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Estel Smith",
+			"email": "estel.smith@gmail.com",
+			"role": "Project Owner"
+		}
+	],
+	"keywords": [
+		"mvc",
+		"routing"
+	]
+}
