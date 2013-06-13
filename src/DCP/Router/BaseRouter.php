@@ -33,7 +33,7 @@ use DCP\Router\Exception\InvalidArgumentException;
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class Base {
+class BaseRouter {
 	/**
 	 * Listing of components that the router may route to.
 	 * @var array

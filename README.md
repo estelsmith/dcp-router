@@ -9,7 +9,7 @@ Example
 	);
 	$controller_prefix = 'MyApp\Controllers';
 
-	$router = new DCP\Router\Base($hierarchy, $controller_prefix);
+	$router = new DCP\Router\BaseRouter($hierarchy, $controller_prefix);
 
 	$router->dispatch('/user/create');
 	// This will attempt to dispatch to MyApp\Controllers\UserController::createAction()
