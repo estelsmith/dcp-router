@@ -25,15 +25,29 @@
  */
 namespace DCP\Router;
 
-use DCP\Router\Exception\NotFoundException;
-use DCP\Router\Exception\InvalidArgumentException;
+use Evenement\EventEmitterInterface;
 
 /**
  * Provides a very minimalistic MVC-style router.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class BaseRouter {
+class BaseRouter implements RouterInterface {
+	const EVENT_CONTROLLER_CREATE = 'dcp.router.controller.create';
+	const EVENT_CONTROLLER_CREATED = 'dcp.router.controller.created';
+	const EVENT_COMPONENT_CREATE = 'dcp.router.component.create';
+	const EVENT_COMPONENT_CREATED = 'dcp.router.component.created';
+	const EVENT_CONTROLLER_DISPATCH = 'dcp.router.controller.dispatch';
+	const EVENT_CONTROLLER_DISPATCHED = 'dcp.router.controller.dispatched';
+	const EVENT_COMPONENT_DISPATCH = 'dcp.router.component.dispatch';
+	const EVENT_COMPONENT_DISPATCHED = 'dcp.router.component.dispatched';
+
+	/**
+	 * The event emitter we use to control actual routing work.
+	 * @var \Evenement\EventEmitterInterface
+	*/
+	protected $_emitter;
+
 	/**
 	 * Listing of components that the router may route to.
 	 * @var array
@@ -41,28 +55,18 @@ class BaseRouter {
 	protected $_components = array();
 
 	/**
-	 * Callback to be executed any time a component needs routed to.
-	 * @var callable
-	*/
-	protected $_componentCallback;
-
-	/**
-	 * Callback to be executed any time a controller needs routed to.
-	 * @var callable
-	*/
-	protected $_controllerCallback;
-
-	/**
 	 * Namespace prefix to apply to all controllers being routed to.
 	 * @var string
 	*/
-	protected $_controllerPrefix = __NAMESPACE__;
+	protected $_controllerPrefix = '';
 
 	/**
 	 * @param array $components Array of components to attach to the router.
 	 * @param string $controller_prefix Namespace prefix to apply to all controllers being routed to.
 	*/
-	public function __construct($components = NULL, $controller_prefix = NULL) {
+	public function __construct(EventEmitterInterface $emitter, $components = NULL, $controller_prefix = NULL) {
+		$this->_emitter = $emitter;
+
 		if ($components) {
 			$this->setComponents($components);
 		}
@@ -71,8 +75,15 @@ class BaseRouter {
 			$this->setControllerPrefix($controller_prefix);
 		}
 
-		$this->setComponentCallback($this->getDefaultComponentCallback());
-		$this->setControllerCallback($this->getDefaultControllerCallback());
+		$controller_dispatch = self::EVENT_CONTROLLER_DISPATCH;
+		$emitter->on(self::EVENT_CONTROLLER_CREATED, function($controller, $url) use($emitter, $controller_dispatch) {
+			$emitter->emit($controller_dispatch, array($controller, $url));
+		});
+
+		$component_dispatch = self::EVENT_COMPONENT_DISPATCH;
+		$emitter->on(self::EVENT_COMPONENT_CREATED, function($component, $url) use($emitter, $component_dispatch) {
+			$emitter->emit($component_dispatch, array($component, $url));
+		});
 	}
 
 	/**
@@ -105,85 +116,6 @@ class BaseRouter {
 	*/
 	public function setControllerPrefix($prefix) {
 		$this->_controllerPrefix = $prefix;
-	}
-
-	/**
-	 * Returns a callable that provides default functionality for routing to components.
-	 * @return callable
-	*/
-	public function getDefaultComponentCallback() {
-		return function($node, $url) {
-			// Simply route to the next component.
-			$instance = new $node();
-			return $instance->dispatch($url);
-		};
-	}
-
-	/**
-	 * Set a new callback to be executed when the router determines it needs to route to a component.
-	 * @param callable $callback
-	*/
-	public function setComponentCallback($callback) {
-		if (!is_callable($callback)) {
-			throw new InvalidArgumentException('Argument is not callable.');
-		} else {
-			$this->_componentCallback = $callback;
-		}
-	}
-
-	/**
-	 * Returns a callable that provides default functionality for routing to controllers.
-	 * @return callable
-	*/
-	public function getDefaultControllerCallback() {
-		$router = $this;
-
-		return function($node, $url) use($router) {
-			$return_value = FALSE;
-
-			// Build the class name of the controller we're getting ready to instantiate.
-			$class_name = $router->getControllerPrefix() . '\\' . ucfirst($node) . 'Controller';
-
-			// Set the default action, in case no action was specified in the URL.
-			$method = 'index';
-
-			// Get action from URL if it exists.
-			if (count($url) > 0) {
-				$method = array_shift($url);
-			}
-
-			$method .= 'Action';
-
-			/*
-			 * Instantiate the controller class, and call the action method that was defined.
-			 * Throw a NotFoundException if either the class or method does not exist.
-			*/
-			if (!class_exists($class_name)) {
-				throw new NotFoundException('Could not find ' . $class_name);
-			} else {
-				$instance = new $class_name();
-
-				if (!method_exists($instance, $method)) {
-					throw new NotFoundException('Could not find ' . $class_name . '::' . $method);
-				} else {
-					$return_value = call_user_func_array(array($instance, $method), $url);
-				}
-			}
-
-			return $return_value;
-		};
-	}
-
-	/**
-	 * Set a new callback to be executed when the router determines it needs to router to a controller.
-	 * @param callable $callback
-	*/
-	public function setControllerCallback($callback) {
-		if (!is_callable($callback)) {
-			throw new InvalidArgumentException('Argument is not callable.');
-		} else {
-			$this->_controllerCallback = $callback;
-		}
 	}
 
 	/**
@@ -230,6 +162,7 @@ class BaseRouter {
 	*/
 	public function dispatch($url) {
 		$return_value = FALSE;
+		$emitter = $this->_emitter;
 
 		if (!is_array($url)) {
 			$url = $this->_convertUrlToArray($url);
@@ -238,18 +171,18 @@ class BaseRouter {
 		/*
 		 * Route to the index controller if no route was presented.
 		 *
-		 * Otherwise, route to an appropriate component, if it exists, or route to the appropriate controller
-		 * if there is no acceptable component to route to.
+		 * Otherwise, route to an appropriate component, if it exists, or route to the appropriate
+		 * controller if there is no acceptable component to route to.
 		*/
 		if (!$url) {
-			$return_value = call_user_func_array($this->_controllerCallback, array('index', array()));
+			$emitter->emit(self::EVENT_CONTROLLER_CREATE, array('index', array()));
 		} else {
 			$node = array_shift($url);
 
 			if (isset($this->_components[$node])) {
-				$return_value = call_user_func_array($this->_componentCallback, array($this->_components[$node], $url));
+				$emitter->emit(self::EVENT_COMPONENT_CREATE, array($this->_components[$node], $url));
 			} else {
-				$return_value = call_user_func_array($this->_controllerCallback, array($node, $url));
+				$emitter->emit(self::EVENT_CONTROLLER_CREATE, array($node, $url));
 			}
 		}
 
