@@ -12,18 +12,34 @@ use DCP\Router\Exception\NotFoundException;
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class MvcRouter extends BaseRouter
+class MvcRouter extends BaseRouter implements MvcRouterInterface
 {
-    /**
-     * @param array $components Array of components to attach to the router.
-     * @param string $controller_prefix Namespace prefix to apply to all controllers being routed to.
-    */
-    public function __construct($components = null, $controller_prefix = null)
+    public function __construct()
     {
-        parent::__construct($components, $controller_prefix);
+        parent::__construct();
 
         $this->setupControllerListeners();
         $this->setupComponentListeners();
+    }
+
+    /**
+     * Retrieve the namespace prefix being applied to controllers being routed to.
+     * @return string
+     */
+    public function getControllerPrefix()
+    {
+        return $this->controllerPrefix;
+    }
+
+    /**
+     * Set the namespace prefix to apply to all controllers being routed to.
+     * @param string $prefix
+     * @return $this
+     */
+    public function setControllerPrefix($prefix)
+    {
+        $this->controllerPrefix = $prefix;
+        return $this;
     }
 
     protected function setupControllerListeners()

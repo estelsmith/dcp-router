@@ -13,7 +13,7 @@ use Evenement\EventEmitterTrait;
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class BaseRouter implements RouterInterface, EventEmitterInterface
+class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 {
     use EventEmitterTrait;
 
@@ -38,20 +38,8 @@ class BaseRouter implements RouterInterface, EventEmitterInterface
     */
     protected $controllerPrefix = '';
 
-    /**
-     * @param array $components Array of components to attach to the router.
-     * @param string $controller_prefix Namespace prefix to apply to all controllers being routed to.
-    */
-    public function __construct($components = null, $controller_prefix = null)
+    public function __construct()
     {
-        if ($components) {
-            $this->setComponents($components);
-        }
-
-        if ($controller_prefix) {
-            $this->setControllerPrefix($controller_prefix);
-        }
-
         $this->on(self::EVENT_CONTROLLER_CREATED, function ($controller, $url) {
             $this->emit(self::EVENT_CONTROLLER_DISPATCH, array($controller, $url));
         });
@@ -78,26 +66,6 @@ class BaseRouter implements RouterInterface, EventEmitterInterface
     public function setComponents($components)
     {
         $this->components = $components;
-        return $this;
-    }
-
-    /**
-     * Retrieve the namespace prefix being applied to controllers being routed to.
-     * @return string
-    */
-    public function getControllerPrefix()
-    {
-        return $this->controllerPrefix;
-    }
-
-    /**
-     * Set the namespace prefix to apply to all controllers being routed to.
-     * @param string $prefix
-     * @return $this
-    */
-    public function setControllerPrefix($prefix)
-    {
-        $this->controllerPrefix = $prefix;
         return $this;
     }
 
