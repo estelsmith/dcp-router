@@ -17,12 +17,19 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 {
     use EventEmitterTrait;
 
+    const EVENT_CONTROLLER_CREATING = 'dcp.router.controller.creating';
     const EVENT_CONTROLLER_CREATE = 'dcp.router.controller.create';
     const EVENT_CONTROLLER_CREATED = 'dcp.router.controller.created';
+
+    const EVENT_COMPONENT_CREATING = 'dcp.router.component.creating';
     const EVENT_COMPONENT_CREATE = 'dcp.router.component.create';
     const EVENT_COMPONENT_CREATED = 'dcp.router.component.created';
+
+    const EVENT_CONTROLLER_DISPATCHING = 'dcp.router.controller.dispatching';
     const EVENT_CONTROLLER_DISPATCH = 'dcp.router.controller.dispatch';
     const EVENT_CONTROLLER_DISPATCHED = 'dcp.router.controller.dispatched';
+
+    const EVENT_COMPONENT_DISPATCHING = 'dcp.router.component.dispatching';
     const EVENT_COMPONENT_DISPATCH = 'dcp.router.component.dispatch';
     const EVENT_COMPONENT_DISPATCHED = 'dcp.router.component.dispatched';
 
@@ -32,20 +39,32 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     */
     protected $components = array();
 
-    /**
-     * Namespace prefix to apply to all controllers being routed to.
-     * @var string
-    */
-    protected $controllerPrefix = '';
-
     public function __construct()
     {
         $this->on(self::EVENT_CONTROLLER_CREATED, function ($controller, $url) {
-            $this->emit(self::EVENT_CONTROLLER_DISPATCH, array($controller, $url));
+            $this->emit(self::EVENT_CONTROLLER_DISPATCHING, array($controller, $url));
+        });
+
+        $this->on(self::EVENT_COMPONENT_CREATING, function ($component_name, $url) {
+            $this->emit(self::EVENT_COMPONENT_CREATE, array($component_name, $url));
+        });
+
+        $this->on(self::EVENT_COMPONENT_CREATE, function ($component_name, $url) {
+            $component = new $component_name();
+            $this->emit(self::EVENT_COMPONENT_CREATED, array($component, $url));
         });
 
         $this->on(self::EVENT_COMPONENT_CREATED, function ($component, $url) {
+            $this->emit(self::EVENT_COMPONENT_DISPATCHING, array($component, $url));
+        });
+
+        $this->on(self::EVENT_COMPONENT_DISPATCHING, function ($component, $url) {
             $this->emit(self::EVENT_COMPONENT_DISPATCH, array($component, $url));
+        });
+
+        $this->on(self::EVENT_COMPONENT_DISPATCH, function (BaseRouterInterface $component, $url) {
+            $result = $component->dispatch($url);
+            $this->emit(self::EVENT_COMPONENT_DISPATCHED, array($result, $component, $url));
         });
     }
 
@@ -127,14 +146,14 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
          * controller if there is no acceptable component to route to.
         */
         if (!$url) {
-            $this->emit(self::EVENT_CONTROLLER_CREATE, array('index', array()));
+            $this->emit(self::EVENT_CONTROLLER_CREATING, array('index', array()));
         } else {
             $node = array_shift($url);
 
             if (isset($this->components[$node])) {
-                $this->emit(self::EVENT_COMPONENT_CREATE, array($this->components[$node], $url));
+                $this->emit(self::EVENT_COMPONENT_CREATING, array($this->components[$node], $url));
             } else {
-                $this->emit(self::EVENT_CONTROLLER_CREATE, array($node, $url));
+                $this->emit(self::EVENT_CONTROLLER_CREATING, array($node, $url));
             }
         }
 

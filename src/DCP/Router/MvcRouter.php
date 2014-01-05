@@ -14,12 +14,18 @@ use DCP\Router\Exception\NotFoundException;
  */
 class MvcRouter extends BaseRouter implements MvcRouterInterface
 {
+    /**
+     * Namespace prefix to apply to all controllers being routed to.
+     * @var string
+     */
+    protected $controllerPrefix = '';
+
     public function __construct()
     {
         parent::__construct();
 
-        $this->setupControllerListeners();
-        $this->setupComponentListeners();
+        $this->setupControllerCreationListeners();
+        $this->setupControllerDispatchListeners();
     }
 
     /**
@@ -42,9 +48,9 @@ class MvcRouter extends BaseRouter implements MvcRouterInterface
         return $this;
     }
 
-    protected function setupControllerListeners()
+    protected function setupControllerCreationListeners()
     {
-        $this->on(self::EVENT_CONTROLLER_CREATE, function ($controller_name, $url) {
+        $this->on(self::EVENT_CONTROLLER_CREATING, function ($controller_name, $url) {
             $controller_prefix = $this->getControllerPrefix();
             $class_name = $controller_prefix . '\\' . ucfirst($controller_name) . 'Controller';
             $controller = null;
@@ -52,12 +58,19 @@ class MvcRouter extends BaseRouter implements MvcRouterInterface
             if (!class_exists($class_name)) {
                 throw new NotFoundException('Could not find ' . $class_name);
             } else {
-                $controller = new $class_name();
-                $this->emit(self::EVENT_CONTROLLER_CREATED, array($controller, $url));
+                $this->emit(self::EVENT_CONTROLLER_CREATE, array($class_name, $url));
             }
         });
 
-        $this->on(self::EVENT_CONTROLLER_DISPATCH, function ($controller, $url) {
+        $this->on(self::EVENT_CONTROLLER_CREATE, function ($class_name, $url) {
+            $controller = new $class_name();
+            $this->emit(self::EVENT_CONTROLLER_CREATED, array($controller, $url));
+        });
+    }
+
+    protected function setupControllerDispatchListeners()
+    {
+        $this->on(self::EVENT_CONTROLLER_DISPATCHING, function ($controller, $url) {
             // Set the default action, in case no action was specified in the URL.
             $method = 'index';
 
@@ -73,22 +86,13 @@ class MvcRouter extends BaseRouter implements MvcRouterInterface
 
                 throw new NotFoundException('Could not find ' . $class_name . '::' . $method);
             } else {
-                $result = call_user_func_array(array($controller, $method), $url);
-                $this->emit(self::EVENT_CONTROLLER_DISPATCHED, array($result, $controller, $method));
+                $this->emit(self::EVENT_CONTROLLER_DISPATCH, array($controller, $method, $url));
             }
         });
-    }
 
-    protected function setupComponentListeners()
-    {
-        $this->on(self::EVENT_COMPONENT_CREATE, function ($component_name, $url) {
-            $component = new $component_name();
-            $this->emit(self::EVENT_COMPONENT_CREATED, array($component, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_DISPATCH, function ($component, $url) {
-            $result = $component->dispatch($url);
-            $this->emit(self::EVENT_COMPONENT_DISPATCHED, array($result, $component, $url));
+        $this->on(self::EVENT_CONTROLLER_DISPATCH, function ($controller, $method, $url) {
+            $result = call_user_func_array(array($controller, $method), $url);
+            $this->emit(self::EVENT_CONTROLLER_DISPATCHED, array($result, $controller, $method));
         });
     }
 }
