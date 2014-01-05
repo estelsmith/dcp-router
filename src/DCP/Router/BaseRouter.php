@@ -26,14 +26,17 @@
 namespace DCP\Router;
 
 use Evenement\EventEmitterInterface;
+use Evenement\EventEmitterTrait;
 
 /**
  * Provides a very minimalistic MVC-style router.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class BaseRouter implements RouterInterface
+class BaseRouter implements RouterInterface, EventEmitterInterface
 {
+    use EventEmitterTrait;
+
     const EVENT_CONTROLLER_CREATE = 'dcp.router.controller.create';
     const EVENT_CONTROLLER_CREATED = 'dcp.router.controller.created';
     const EVENT_COMPONENT_CREATE = 'dcp.router.component.create';
@@ -42,12 +45,6 @@ class BaseRouter implements RouterInterface
     const EVENT_CONTROLLER_DISPATCHED = 'dcp.router.controller.dispatched';
     const EVENT_COMPONENT_DISPATCH = 'dcp.router.component.dispatch';
     const EVENT_COMPONENT_DISPATCHED = 'dcp.router.component.dispatched';
-
-    /**
-     * The event emitter we use to control actual routing work.
-     * @var \Evenement\EventEmitterInterface
-    */
-    protected $emitter;
 
     /**
      * Listing of components that the router may route to.
@@ -65,10 +62,8 @@ class BaseRouter implements RouterInterface
      * @param array $components Array of components to attach to the router.
      * @param string $controller_prefix Namespace prefix to apply to all controllers being routed to.
     */
-    public function __construct(EventEmitterInterface $emitter, $components = null, $controller_prefix = null)
+    public function __construct($components = null, $controller_prefix = null)
     {
-        $this->emitter = $emitter;
-
         if ($components) {
             $this->setComponents($components);
         }
@@ -77,14 +72,12 @@ class BaseRouter implements RouterInterface
             $this->setControllerPrefix($controller_prefix);
         }
 
-        $controller_dispatch = self::EVENT_CONTROLLER_DISPATCH;
-        $emitter->on(self::EVENT_CONTROLLER_CREATED, function ($controller, $url) use ($emitter, $controller_dispatch) {
-            $emitter->emit($controller_dispatch, array($controller, $url));
+        $this->on(self::EVENT_CONTROLLER_CREATED, function ($controller, $url) {
+            $this->emit(self::EVENT_CONTROLLER_DISPATCH, array($controller, $url));
         });
 
-        $component_dispatch = self::EVENT_COMPONENT_DISPATCH;
-        $emitter->on(self::EVENT_COMPONENT_CREATED, function ($component, $url) use ($emitter, $component_dispatch) {
-            $emitter->emit($component_dispatch, array($component, $url));
+        $this->on(self::EVENT_COMPONENT_CREATED, function ($component, $url) {
+            $this->emit(self::EVENT_COMPONENT_DISPATCH, array($component, $url));
         });
     }
 
@@ -100,10 +93,12 @@ class BaseRouter implements RouterInterface
     /**
      * Attach an array of components to the router.
      * @param array $components
+     * @return $this
     */
     public function setComponents($components)
     {
         $this->components = $components;
+        return $this;
     }
 
     /**
@@ -118,10 +113,12 @@ class BaseRouter implements RouterInterface
     /**
      * Set the namespace prefix to apply to all controllers being routed to.
      * @param string $prefix
+     * @return $this
     */
     public function setControllerPrefix($prefix)
     {
         $this->controllerPrefix = $prefix;
+        return $this;
     }
 
     /**
@@ -170,7 +167,6 @@ class BaseRouter implements RouterInterface
     public function dispatch($url)
     {
         $return_value = false;
-        $emitter = $this->emitter;
 
         if (!is_array($url)) {
             $url = $this->convertUrlToArray($url);
@@ -183,14 +179,14 @@ class BaseRouter implements RouterInterface
          * controller if there is no acceptable component to route to.
         */
         if (!$url) {
-            $emitter->emit(self::EVENT_CONTROLLER_CREATE, array('index', array()));
+            $this->emit(self::EVENT_CONTROLLER_CREATE, array('index', array()));
         } else {
             $node = array_shift($url);
 
             if (isset($this->components[$node])) {
-                $emitter->emit(self::EVENT_COMPONENT_CREATE, array($this->components[$node], $url));
+                $this->emit(self::EVENT_COMPONENT_CREATE, array($this->components[$node], $url));
             } else {
-                $emitter->emit(self::EVENT_CONTROLLER_CREATE, array($node, $url));
+                $this->emit(self::EVENT_CONTROLLER_CREATE, array($node, $url));
             }
         }
 

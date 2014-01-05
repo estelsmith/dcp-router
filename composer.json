@@ -13,7 +13,7 @@
 		"psr-0": {"DCP\\Router\\": "src/"}
 	},
 	"require": {
-		"evenement/evenement": "1.0.*"
+		"evenement/evenement": "2.0.*"
 	},
 	"keywords": [
 		"mvc",
