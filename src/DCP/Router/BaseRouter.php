@@ -7,31 +7,16 @@ namespace DCP\Router;
 
 use Evenement\EventEmitterInterface;
 use Evenement\EventEmitterTrait;
+use DCP\Router\Exception\NotFoundException;
 
 /**
  * Provides a very minimalistic MVC-style router.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
-class BaseRouter implements BaseRouterInterface, EventEmitterInterface
+abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 {
     use EventEmitterTrait;
-
-    const EVENT_CONTROLLER_CREATING = 'dcp.router.controller.creating';
-    const EVENT_CONTROLLER_CREATE = 'dcp.router.controller.create';
-    const EVENT_CONTROLLER_CREATED = 'dcp.router.controller.created';
-
-    const EVENT_COMPONENT_CREATING = 'dcp.router.component.creating';
-    const EVENT_COMPONENT_CREATE = 'dcp.router.component.create';
-    const EVENT_COMPONENT_CREATED = 'dcp.router.component.created';
-
-    const EVENT_CONTROLLER_DISPATCHING = 'dcp.router.controller.dispatching';
-    const EVENT_CONTROLLER_DISPATCH = 'dcp.router.controller.dispatch';
-    const EVENT_CONTROLLER_DISPATCHED = 'dcp.router.controller.dispatched';
-
-    const EVENT_COMPONENT_DISPATCHING = 'dcp.router.component.dispatching';
-    const EVENT_COMPONENT_DISPATCH = 'dcp.router.component.dispatch';
-    const EVENT_COMPONENT_DISPATCHED = 'dcp.router.component.dispatched';
 
     /**
      * Listing of components that the router may route to.
@@ -39,33 +24,16 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     */
     protected $components = array();
 
+    /**
+     * Namespace prefix to apply to all controllers being routed to.
+     * @var string
+     */
+    protected $controllerPrefix = '';
+
     public function __construct()
     {
-        $this->on(self::EVENT_CONTROLLER_CREATED, function ($controller, $url) {
-            $this->emit(self::EVENT_CONTROLLER_DISPATCHING, array($controller, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_CREATING, function ($component_name, $url) {
-            $this->emit(self::EVENT_COMPONENT_CREATE, array($component_name, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_CREATE, function ($component_name, $url) {
-            $component = new $component_name();
-            $this->emit(self::EVENT_COMPONENT_CREATED, array($component, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_CREATED, function ($component, $url) {
-            $this->emit(self::EVENT_COMPONENT_DISPATCHING, array($component, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_DISPATCHING, function ($component, $url) {
-            $this->emit(self::EVENT_COMPONENT_DISPATCH, array($component, $url));
-        });
-
-        $this->on(self::EVENT_COMPONENT_DISPATCH, function (BaseRouterInterface $component, $url) {
-            $result = $component->dispatch($url);
-            $this->emit(self::EVENT_COMPONENT_DISPATCHED, array($result, $component, $url));
-        });
+        $this->setupControllerListeners();
+        $this->setupComponentListeners();
     }
 
     /**
@@ -86,6 +54,59 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     {
         $this->components = $components;
         return $this;
+    }
+
+    /**
+     * Retrieve the namespace prefix being applied to controllers being routed to.
+     * @return string
+     */
+    public function getControllerPrefix()
+    {
+        return $this->controllerPrefix;
+    }
+
+    /**
+     * Set the namespace prefix to apply to all controllers being routed to.
+     * @param string $prefix
+     * @return $this
+     */
+    public function setControllerPrefix($prefix)
+    {
+        $this->controllerPrefix = $prefix;
+        return $this;
+    }
+
+    /**
+     * Dispatch URL to application controller.
+     * @return mixed
+     */
+    public function dispatch($url)
+    {
+        $return_value = false;
+
+        if (!is_array($url)) {
+            $url = $this->convertUrlToArray($url);
+        }
+
+        /*
+         * Route to the index controller if no route was presented.
+         *
+         * Otherwise, route to an appropriate component, if it exists, or route to the appropriate
+         * controller if there is no acceptable component to route to.
+        */
+        if (!$url) {
+            $this->dispatchController('index', array());
+        } else {
+            $node = array_shift($url);
+
+            if (isset($this->components[$node])) {
+                $this->dispatchComponent($node, $url);
+            } else {
+                $this->dispatchController($node, $url);
+            }
+        }
+
+        return $return_value;
     }
 
     /**
@@ -127,36 +148,120 @@ class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         return $return_value;
     }
 
-    /**
-     * Dispatch URL to application controller.
-     * @return mixed
-    */
-    public function dispatch($url)
+    protected function dispatchController($node, $url)
     {
-        $return_value = false;
+        $event = (new Event\CreatingEvent())
+            ->setName($node)
+        ;
+        $this->emit(ControllerEvents::CREATING, array($event));
 
-        if (!is_array($url)) {
-            $url = $this->convertUrlToArray($url);
-        }
+        $event = (new Event\CreateEvent())
+            ->setClass($event->getClass())
+        ;
+        $this->emit(ControllerEvents::CREATE, array($event));
 
-        /*
-         * Route to the index controller if no route was presented.
-         *
-         * Otherwise, route to an appropriate component, if it exists, or route to the appropriate
-         * controller if there is no acceptable component to route to.
-        */
-        if (!$url) {
-            $this->emit(self::EVENT_CONTROLLER_CREATING, array('index', array()));
-        } else {
-            $node = array_shift($url);
+        $controller = $event->getInstance();
 
-            if (isset($this->components[$node])) {
-                $this->emit(self::EVENT_COMPONENT_CREATING, array($this->components[$node], $url));
+        $this->emit(ControllerEvents::CREATED, array(
+            (new Event\Controller\CreatedEvent())
+                ->setController($controller)
+        ));
+
+        $event = (new Event\Controller\DispatchEvent())
+            ->setController($controller)
+            ->setUrl($url)
+        ;
+
+        $this->emit(ControllerEvents::DISPATCHING, array($event));
+        $this->emit(ControllerEvents::DISPATCH, array($event));
+        $this->emit(ControllerEvents::DISPATCHED, array($event));
+    }
+
+    protected function setupComponentListeners()
+    {
+        $this->on(ComponentEvents::CREATING, function (Event\CreatingEvent $event) {
+            $event->setClass($event->getName());
+        });
+
+        $this->on(ComponentEvents::CREATE, function (Event\CreateEvent $event) {
+            $class = $event->getClass();
+            $event->setInstance(new $class());
+        });
+
+        $this->on(ComponentEvents::DISPATCH, function (Event\Component\DispatchEvent $event) {
+            $component = $event->getComponent();
+            $component->dispatch($event->getUrl());
+        });
+    }
+
+    protected function dispatchComponent($node, $url)
+    {
+        $componentName = $this->components[$node];
+
+        $event = (new Event\CreatingEvent())
+            ->setName($componentName)
+        ;
+        $this->emit(ComponentEvents::CREATING, array($event));
+
+        $event = (new Event\CreateEvent())
+            ->setClass($event->getClass())
+        ;
+        $this->emit(ComponentEvents::CREATE, array($event));
+
+        $component = $event->getInstance();
+
+        $this->emit(ComponentEvents::CREATED, array(
+            (new Event\Component\CreatedEvent())
+                ->setComponent($component)
+        ));
+
+        $event = (new Event\Component\DispatchEvent())
+            ->setComponent($component)
+            ->setUrl($url)
+        ;
+        $this->emit(ComponentEvents::DISPATCHING, array($event));
+        $this->emit(ComponentEvents::DISPATCH, array($event));
+        $this->emit(ComponentEvents::DISPATCHED, array($event));
+    }
+
+    protected function setupControllerListeners()
+    {
+        $this->setupControllerCreatingListener();
+        $this->setupControllerCreateListener();
+        $this->setupControllerDispatchListener();
+    }
+
+    protected function setupControllerCreatingListener()
+    {
+        $this->on(ControllerEvents::CREATING, function (Event\CreatingEvent $event) {
+            $controller_prefix = $this->getControllerPrefix();
+            $class_name = $controller_prefix . '\\' . ucfirst($event->getName()) . 'Controller';
+            $controller = null;
+
+            if (!class_exists($class_name)) {
+                throw new NotFoundException('Could not find ' . $class_name);
             } else {
-                $this->emit(self::EVENT_CONTROLLER_CREATING, array($node, $url));
+                $event->setClass($class_name);
             }
-        }
+        });
+    }
 
-        return $return_value;
+    protected function setupControllerCreateListener()
+    {
+        $this->on(ControllerEvents::CREATE, function (Event\CreateEvent $event) {
+            $class = $event->getClass();
+            $event->setInstance(new $class());
+        });
+    }
+
+    protected function setupControllerDispatchListener()
+    {
+        $this->on(ControllerEvents::DISPATCH, function (Event\Controller\DispatchEvent $event) {
+            $controller = $event->getController();
+            $method = $event->getMethod();
+            $url = $event->getUrl();
+
+            call_user_func_array(array($controller, $method), $url);
+        });
     }
 }

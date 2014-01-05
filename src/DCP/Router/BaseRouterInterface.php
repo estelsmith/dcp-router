@@ -25,6 +25,18 @@ interface BaseRouterInterface
     public function setComponents($components);
 
     /**
+     * Retrieve the namespace prefix being applied to controllers being routed to.
+     * @return string
+     */
+    public function getControllerPrefix();
+
+    /**
+     * Set the namespace prefix to apply to all controllers being routed to.
+     * @param string $prefix
+     */
+    public function setControllerPrefix($prefix);
+
+    /**
      * Dispatch URL to application controller.
      * @param string $url
      * @return mixed
