@@ -1,7 +1,15 @@
 <?php
-
+/**
+ * @package dcp-router
+ * @author Estel Smith <estel.smith@gmail.com>
+ */
 namespace DCP\Router;
 
+/**
+ * Collection of events that are called when a component is dispatched.
+ * @package dcp-router
+ * @author Estel Smith <estel.smith@gmail.com>
+ */
 class ComponentEvents
 {
     const CREATING = 'dcp.router.component.creating';

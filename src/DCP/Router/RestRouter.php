@@ -8,26 +8,39 @@ namespace DCP\Router;
 use DCP\Router\Exception\NotFoundException;
 
 /**
- * Provides a very minimalistic MVC-style router.
+ * Provides a minimalistic event-based REST router.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
 class RestRouter extends BaseRouter
 {
+    /**
+     * @var string
+     */
     protected $method;
 
+    /**
+     * {@inheritdoc}
+     * @param string $method
+     */
     public function dispatch($url, $method = 'get')
     {
         $this->method = strtolower($method);
         return parent::dispatch($url);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     protected function setupControllerListeners()
     {
         parent::setupControllerListeners();
         $this->setupControllerDispatchingListener();
     }
 
+    /**
+     * Add default event listener for ControllerEvents::DISPATCHING event.
+     */
     protected function setupControllerDispatchingListener()
     {
         $this->on(ControllerEvents::DISPATCHING, function (Event\Controller\DispatchEvent $event) {
@@ -44,6 +57,9 @@ class RestRouter extends BaseRouter
         });
     }
 
+    /**
+     * {@inheritdoc}
+     */
     protected function setupComponentListeners()
     {
         parent::setupComponentListeners();

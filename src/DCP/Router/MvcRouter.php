@@ -8,18 +8,24 @@ namespace DCP\Router;
 use DCP\Router\Exception\NotFoundException;
 
 /**
- * Provides a very minimalistic MVC-style router.
+ * Provides a minimalistic event-based MVC router.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
 class MvcRouter extends BaseRouter
 {
+    /**
+     * {@inheritdoc}
+     */
     protected function setupControllerListeners()
     {
         parent::setupControllerListeners();
         $this->setupControllerDispatchingListener();
     }
 
+    /**
+     * Add default event listener for ControllerEvents::DISPATCHING event.
+     */
     protected function setupControllerDispatchingListener()
     {
         $this->on(ControllerEvents::DISPATCHING, function (Event\Controller\DispatchEvent $event) {

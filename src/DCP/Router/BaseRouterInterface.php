@@ -5,6 +5,8 @@
  */
 namespace DCP\Router;
 
+use DCP\Router\Exception\InvalidArgumentException;
+
 /**
  * Provides a very minimalistic MVC-style router.
  * @package dcp-router
@@ -12,34 +14,38 @@ namespace DCP\Router;
  */
 interface BaseRouterInterface
 {
-     /**
-     * Retrieve the components that have been attached to the router.
+    /**
+     * Retrieve list of other routers that the router may dispatch.
      * @return array
-    */
+     */
     public function getComponents();
 
     /**
-     * Attach an array of components to the router.
+     * Set list of other routers that the router may dispatch.
      * @param array $components
-    */
+     * @return $this
+     * @throws InvalidArgumentException
+     */
     public function setComponents($components);
 
     /**
-     * Retrieve the namespace prefix being applied to controllers being routed to.
+     * Retrieve the namespace prefix applied to all resolved controllers.
      * @return string
      */
     public function getControllerPrefix();
 
     /**
-     * Set the namespace prefix to apply to all controllers being routed to.
+     * Set the namespace prefix applied to all resolved controllers.
      * @param string $prefix
+     * @return $this
+     * @throws InvalidArgumentException
      */
     public function setControllerPrefix($prefix);
 
     /**
-     * Dispatch URL to application controller.
-     * @param string $url
-     * @return mixed
-    */
+     * Dispatch URL to appropriate application controller.
+     * @param string|array $url
+     * @throws InvalidArgumentException
+     */
     public function dispatch($url);
 }

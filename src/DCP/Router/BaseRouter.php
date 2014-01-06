@@ -5,12 +5,13 @@
  */
 namespace DCP\Router;
 
+use DCP\Router\Exception\InvalidArgumentException;
 use Evenement\EventEmitterInterface;
 use Evenement\EventEmitterTrait;
 use DCP\Router\Exception\NotFoundException;
 
 /**
- * Provides a very minimalistic MVC-style router.
+ * Provides a minimalistic event-based router platform.
  * @package dcp-router
  * @author Estel Smith <estel.smith@gmail.com>
  */
@@ -19,13 +20,13 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     use EventEmitterTrait;
 
     /**
-     * Listing of components that the router may route to.
+     * List of other routers that the router may dispatch.
      * @var array
     */
-    protected $components = array();
+    protected $components = [];
 
     /**
-     * Namespace prefix to apply to all controllers being routed to.
+     * Namespace prefix applied to all resolved controllers.
      * @var string
      */
     protected $controllerPrefix = '';
@@ -37,28 +38,28 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     }
 
     /**
-     * Retrieve the components that have been attached to the router.
-     * @return array
-    */
+     * {@inheritdoc}
+     */
     public function getComponents()
     {
         return $this->components;
     }
 
     /**
-     * Attach an array of components to the router.
-     * @param array $components
-     * @return $this
-    */
+     * {@inheritdoc}
+     */
     public function setComponents($components)
     {
+        if (!is_array($components)) {
+            throw new InvalidArgumentException('components must be an array');
+        }
+
         $this->components = $components;
         return $this;
     }
 
     /**
-     * Retrieve the namespace prefix being applied to controllers being routed to.
-     * @return string
+     * {@inheritdoc}
      */
     public function getControllerPrefix()
     {
@@ -66,36 +67,33 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     }
 
     /**
-     * Set the namespace prefix to apply to all controllers being routed to.
-     * @param string $prefix
-     * @return $this
+     * {@inheritdoc}
      */
     public function setControllerPrefix($prefix)
     {
+        if (!is_string($prefix)) {
+            throw new InvalidArgumentException('prefix must be a string');
+        }
+
         $this->controllerPrefix = $prefix;
         return $this;
     }
 
     /**
-     * Dispatch URL to application controller.
-     * @return mixed
+     * {@inheritdoc}
      */
     public function dispatch($url)
     {
-        $return_value = false;
+        if (!is_string($url) || !is_array($url)) {
+            throw new InvalidArgumentException('url must be a string or array');
+        }
 
         if (!is_array($url)) {
             $url = $this->convertUrlToArray($url);
         }
 
-        /*
-         * Route to the index controller if no route was presented.
-         *
-         * Otherwise, route to an appropriate component, if it exists, or route to the appropriate
-         * controller if there is no acceptable component to route to.
-        */
         if (!$url) {
-            $this->dispatchController('index', array());
+            $this->dispatchController('index', []);
         } else {
             $node = array_shift($url);
 
@@ -105,29 +103,26 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
                 $this->dispatchController($node, $url);
             }
         }
-
-        return $return_value;
     }
 
     /**
-     * Converts a URL to an array for routing purposes. Returns the array on success, or FALSE on failure.
-     * @return array|false
-    */
+     * Converts a string-based URL into an array appropriate for consuming by the router.
+     * @param string $url
+     * @return array|bool Returns an array on success, or FALSE on failure.
+     */
     protected function convertUrlToArray($url)
     {
         $return_value = false;
 
         if ($url) {
-            // Remove the query string, if it exists.
+            // Remove the query string if it exists.
             $url = explode('?', $url);
             $url = $url[0];
 
             // Break URL into an array.
             $url = explode('/', $url);
 
-            /*
-             * Loop through the URL array and remove any empty entries caused by multiple consecutive slashes.
-            */
+            // Loop through the array and remove any empty entries caused by consecutive slashes.
             if ($url) {
                 foreach ($url as $url_key => $url_entry) {
                     if ($url_entry === '') {
@@ -148,35 +143,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         return $return_value;
     }
 
-    protected function dispatchController($node, $url)
-    {
-        $event = (new Event\CreatingEvent())
-            ->setName($node)
-        ;
-        $this->emit(ControllerEvents::CREATING, array($event));
-
-        $event = (new Event\CreateEvent())
-            ->setClass($event->getClass())
-        ;
-        $this->emit(ControllerEvents::CREATE, array($event));
-
-        $controller = $event->getInstance();
-
-        $this->emit(ControllerEvents::CREATED, array(
-            (new Event\Controller\CreatedEvent())
-                ->setController($controller)
-        ));
-
-        $event = (new Event\Controller\DispatchEvent())
-            ->setController($controller)
-            ->setUrl($url)
-        ;
-
-        $this->emit(ControllerEvents::DISPATCHING, array($event));
-        $this->emit(ControllerEvents::DISPATCH, array($event));
-        $this->emit(ControllerEvents::DISPATCHED, array($event));
-    }
-
+    /**
+     * Add default event listeners for component creation/dispatch.
+     */
     protected function setupComponentListeners()
     {
         $this->on(ComponentEvents::CREATING, function (Event\CreatingEvent $event) {
@@ -194,6 +163,11 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         });
     }
 
+    /**
+     * Dispatch current URL to the given component router.
+     * @param string $node
+     * @param array $url
+     */
     protected function dispatchComponent($node, $url)
     {
         $componentName = $this->components[$node];
@@ -224,6 +198,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         $this->emit(ComponentEvents::DISPATCHED, array($event));
     }
 
+    /**
+     * Add default event listeners for controller creation/dispatch.
+     */
     protected function setupControllerListeners()
     {
         $this->setupControllerCreatingListener();
@@ -231,6 +208,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         $this->setupControllerDispatchListener();
     }
 
+    /**
+     * Add default event listener for ControllerEvents::CREATING event.
+     */
     protected function setupControllerCreatingListener()
     {
         $this->on(ControllerEvents::CREATING, function (Event\CreatingEvent $event) {
@@ -246,6 +226,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         });
     }
 
+    /**
+     * Add default event listener for ControllerEvents::CREATE event.
+     */
     protected function setupControllerCreateListener()
     {
         $this->on(ControllerEvents::CREATE, function (Event\CreateEvent $event) {
@@ -254,6 +237,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         });
     }
 
+    /**
+     * Add default event listener for ControllerEvents::DISPATCH event.
+     */
     protected function setupControllerDispatchListener()
     {
         $this->on(ControllerEvents::DISPATCH, function (Event\Controller\DispatchEvent $event) {
@@ -263,5 +249,39 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 
             call_user_func_array(array($controller, $method), $url);
         });
+    }
+
+    /**
+     * Dispatch currently URL to an application controller.
+     * @param string $node
+     * @param string $url
+     */
+    protected function dispatchController($node, $url)
+    {
+        $event = (new Event\CreatingEvent())
+            ->setName($node)
+        ;
+        $this->emit(ControllerEvents::CREATING, array($event));
+
+        $event = (new Event\CreateEvent())
+            ->setClass($event->getClass())
+        ;
+        $this->emit(ControllerEvents::CREATE, array($event));
+
+        $controller = $event->getInstance();
+
+        $this->emit(ControllerEvents::CREATED, array(
+            (new Event\Controller\CreatedEvent())
+                ->setController($controller)
+        ));
+
+        $event = (new Event\Controller\DispatchEvent())
+            ->setController($controller)
+            ->setUrl($url)
+        ;
+
+        $this->emit(ControllerEvents::DISPATCHING, array($event));
+        $this->emit(ControllerEvents::DISPATCH, array($event));
+        $this->emit(ControllerEvents::DISPATCHED, array($event));
     }
 }

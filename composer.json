@@ -1,7 +1,7 @@
 {
 	"name": "dcp/router",
 	"type": "library",
-	"description": "Provides a minimalistic MVC-style router.",
+	"description": "Provides minimalistic MVC and REST routers.",
 	"license": "MIT",
 	"authors": [
 		{
@@ -17,6 +17,7 @@
 	},
 	"keywords": [
 		"mvc",
+        "rest",
 		"routing"
 	]
 }
