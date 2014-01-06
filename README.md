@@ -2,6 +2,9 @@ About
 =====
 The dcp-router package provides a very minimalistic, hierarchical MVC router.
 
+[![Build Status](https://travis-ci.org/estelsmith/dcp-router.png?branch=master)](https://travis-ci.org/estelsmith/dcp-router)
+[![Coverage Status](https://coveralls.io/repos/estelsmith/dcp-router/badge.png)](https://coveralls.io/r/estelsmith/dcp-router)
+
 Example
 -------
 	$hierarchy = array(
