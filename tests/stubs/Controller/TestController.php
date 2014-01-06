@@ -15,4 +15,9 @@ class TestController
     {
         throw new \Exception($arg);
     }
+
+    public function put()
+    {
+        // yay!
+    }
 }

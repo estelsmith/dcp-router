@@ -4,8 +4,11 @@ class TestRouter extends \DCP\Router\BaseRouter
 {
     public $url;
 
-    public function dispatch($url)
+    public $method;
+
+    public function dispatch($url, $method = null)
     {
         $this->url = $url;
+        $this->method = $method;
     }
 }
