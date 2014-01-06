@@ -112,7 +112,7 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
      */
     protected function convertUrlToArray($url)
     {
-        $return_value = false;
+        $returnValue = false;
 
         if ($url) {
             // Remove the query string if it exists.
@@ -124,9 +124,9 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 
             // Loop through the array and remove any empty entries caused by consecutive slashes.
             if ($url) {
-                foreach ($url as $url_key => $url_entry) {
-                    if ($url_entry === '') {
-                        unset($url[$url_key]);
+                foreach ($url as $urlKey => $urlItem) {
+                    if ($urlItem === '') {
+                        unset($url[$urlKey]);
                     }
                 }
 
@@ -136,11 +136,11 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
 
             // Return the URL if there is anything left after processing.
             if (count($url) > 0) {
-                $return_value = $url;
+                $returnValue = $url;
             }
         }
 
-        return $return_value;
+        return $returnValue;
     }
 
     /**
@@ -175,27 +175,27 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         $event = (new Event\CreatingEvent())
             ->setName($componentName)
         ;
-        $this->emit(ComponentEvents::CREATING, array($event));
+        $this->emit(ComponentEvents::CREATING, [$event]);
 
         $event = (new Event\CreateEvent())
             ->setClass($event->getClass())
         ;
-        $this->emit(ComponentEvents::CREATE, array($event));
+        $this->emit(ComponentEvents::CREATE, [$event]);
 
         $component = $event->getInstance();
 
-        $this->emit(ComponentEvents::CREATED, array(
+        $this->emit(ComponentEvents::CREATED, [
             (new Event\Component\CreatedEvent())
                 ->setComponent($component)
-        ));
+        ]);
 
         $event = (new Event\Component\DispatchEvent())
             ->setComponent($component)
             ->setUrl($url)
         ;
-        $this->emit(ComponentEvents::DISPATCHING, array($event));
-        $this->emit(ComponentEvents::DISPATCH, array($event));
-        $this->emit(ComponentEvents::DISPATCHED, array($event));
+        $this->emit(ComponentEvents::DISPATCHING, [$event]);
+        $this->emit(ComponentEvents::DISPATCH, [$event]);
+        $this->emit(ComponentEvents::DISPATCHED, [$event]);
     }
 
     /**
@@ -214,14 +214,14 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
     protected function setupControllerCreatingListener()
     {
         $this->on(ControllerEvents::CREATING, function (Event\CreatingEvent $event) {
-            $controller_prefix = $this->getControllerPrefix();
-            $class_name = $controller_prefix . '\\' . ucfirst($event->getName()) . 'Controller';
+            $controllerPrefix = $this->getControllerPrefix();
+            $className = $controllerPrefix . '\\' . ucfirst($event->getName()) . 'Controller';
             $controller = null;
 
-            if (!class_exists($class_name)) {
-                throw new NotFoundException('Could not find ' . $class_name);
+            if (!class_exists($className)) {
+                throw new NotFoundException('Could not find ' . $className);
             } else {
-                $event->setClass($class_name);
+                $event->setClass($className);
             }
         });
     }
@@ -261,27 +261,27 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
         $event = (new Event\CreatingEvent())
             ->setName($node)
         ;
-        $this->emit(ControllerEvents::CREATING, array($event));
+        $this->emit(ControllerEvents::CREATING, [$event]);
 
         $event = (new Event\CreateEvent())
             ->setClass($event->getClass())
         ;
-        $this->emit(ControllerEvents::CREATE, array($event));
+        $this->emit(ControllerEvents::CREATE, [$event]);
 
         $controller = $event->getInstance();
 
-        $this->emit(ControllerEvents::CREATED, array(
+        $this->emit(ControllerEvents::CREATED, [
             (new Event\Controller\CreatedEvent())
                 ->setController($controller)
-        ));
+        ]);
 
         $event = (new Event\Controller\DispatchEvent())
             ->setController($controller)
             ->setUrl($url)
         ;
 
-        $this->emit(ControllerEvents::DISPATCHING, array($event));
-        $this->emit(ControllerEvents::DISPATCH, array($event));
-        $this->emit(ControllerEvents::DISPATCHED, array($event));
+        $this->emit(ControllerEvents::DISPATCHING, [$event]);
+        $this->emit(ControllerEvents::DISPATCH, [$event]);
+        $this->emit(ControllerEvents::DISPATCHED, [$event]);
     }
 }

@@ -4,6 +4,7 @@
  * @author Estel Smith <estel.smith@gmail.com>
  */
 namespace DCP\Router\Event;
+
 use DCP\Router\Exception\InvalidArgumentException;
 
 /**

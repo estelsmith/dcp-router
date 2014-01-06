@@ -43,9 +43,9 @@ class MvcRouter extends BaseRouter
             $method .= 'Action';
 
             if (!method_exists($controller, $method)) {
-                $class_name = get_class($controller);
+                $className = get_class($controller);
 
-                throw new NotFoundException('Could not find ' . $class_name . '::' . $method);
+                throw new NotFoundException('Could not find ' . $className . '::' . $method);
             } else {
                 $event->setUrl($url);
                 $event->setMethod($method);
