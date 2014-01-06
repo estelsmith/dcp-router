@@ -5,7 +5,9 @@
 .idea
 
 # Composer dependencies
+composer.lock
 vendor/*
+bin/*
 
 # Random test file
 test.php

@@ -26,7 +26,7 @@ class RestRouter extends BaseRouter
     public function dispatch($url, $method = 'get')
     {
         $this->method = strtolower($method);
-        return parent::dispatch($url);
+        parent::dispatch($url);
     }
 
     /**
