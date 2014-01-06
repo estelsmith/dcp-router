@@ -32,7 +32,7 @@ class DispatchEvent implements EventInterface
      */
     public function setComponent($component)
     {
-        if (!is_string($component)) {
+        if (!is_object($component)) {
             throw new InvalidArgumentException('component must be an object');
         }
 

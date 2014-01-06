@@ -84,7 +84,7 @@ abstract class BaseRouter implements BaseRouterInterface, EventEmitterInterface
      */
     public function dispatch($url)
     {
-        if (!is_string($url) || !is_array($url)) {
+        if (!is_string($url) && !is_array($url)) {
             throw new InvalidArgumentException('url must be a string or array');
         }
 
