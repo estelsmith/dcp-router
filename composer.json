@@ -1,14 +1,14 @@
 {
-	"name": "dcp/router",
-	"type": "library",
-	"description": "Provides minimalistic MVC and REST routers.",
-	"license": "MIT",
-	"authors": [
-		{
-			"name": "Estel Smith",
-			"email": "estel.smith@gmail.com"
-		}
-	],
+    "name": "dcp/router",
+    "type": "library",
+    "description": "Provides an extensible, event-oriented,  MVC and REST router",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Estel Smith",
+            "email": "estel.smith@gmail.com"
+        }
+    ],
     "require": {
         "evenement/evenement": "2.0.*"
     },
@@ -20,11 +20,11 @@
         "bin-dir": "bin"
     },
     "autoload": {
-		"psr-0": {"DCP\\Router\\": "src/"}
-	},
-	"keywords": [
-		"mvc",
+        "psr-0": {"DCP\\Router\\": "src/"}
+    },
+    "keywords": [
+        "mvc",
         "rest",
-		"routing"
-	]
+        "routing"
+    ]
 }
